@@ -1,8 +1,21 @@
 Triple Axis instruments use the following command to control scans:
 
-1. set preset monitor count unit: preset mcu 10
+set preset monitor count unit: preset mcu 10
 
-2. define scan title: scantitle "along h"
+define scan title: scantitle "along h"
 
-3. set scan in reciprocal space. The following command scans h from 0 to 1 with a step size of 0.1 : 
+set scan in reciprocal space. The following command scans h from 0 to 1 with a step size of 0.1 : 
 scan h 0 1 0.1 k 0 l 0 e 0
+
+set scan in reciprocal space. The following command scans k from 0 to 1 with a step size of 0.1 : 
+scan h 0 k 0 1 0.1 l 0 e 0
+
+set scan in reciprocal space. The following command scans l from 0 to 1 with a step size of 0.1 : 
+scan h 0 k 0 l 0 1 0.1 e 0
+
+set scan in energy space or perform inelastic scans. The following command scans energy or e from 0 to 1 meV with a step size of 0.1 : 
+scan h 0 k 0 l 0 e 0 1 0.1
+
+The scan command should contain h, k, l, e once.
+
+Command "br" moves the instrument to a specific Bragg peak such as [0, 0, 1].
