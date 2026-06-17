@@ -1,6 +1,8 @@
 ### RAG pipeline - Data Ingestion to Vector DB pipline
 import os
+import re
 import trafilatura
+from bs4 import BeautifulSoup
 from langchain_community.document_loaders import PyMuPDFLoader, PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -67,13 +69,37 @@ def process_all_pdfs(pdf_directory):
     print(f"\nTotal documents loaded: {len(all_documents)}")
     return all_documents
 
+def _extract_page_text(html):
+    """Extract readable text from a page's HTML.
+
+    These are structured info pages (rosters, specs, contacts) whose key data
+    is often short link text — e.g. staff names live in <a> tags. Trafilatura
+    discards such anchors as "navigation", so we use BeautifulSoup get_text
+    after dropping non-content tags. This keeps everything (names, titles,
+    contacts) at the cost of some bounded footer noise.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "noscript"]):
+        tag.decompose()
+    # ORNL/Drupal theme puts the big instrument mega-menu, breadcrumb and
+    # skip-links in divs (not <nav>), so they survive the tag pass above and
+    # otherwise pollute every page's chunks. Drop them by their stable classes.
+    for sel in [".tb-megamenu", ".breadcrumb", "#skip-link",
+                ".region-header", ".region-footer", ".feed-icons"]:
+        for el in soup.select(sel):
+            el.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    # Collapse runs of blank lines left behind by stripped tags.
+    return re.sub(r"\n{2,}", "\n", text).strip()
+
+
 ### Load one or more webpages
 def process_all_urls(urls):
     """Process a list of webpage URLs.
 
-    Each page is downloaded and run through trafilatura, which heuristically
-    extracts the main article/body text and drops boilerplate (nav, header,
-    footer, sidebars, ads) without needing per-site tag configuration.
+    Each page is downloaded with trafilatura and its readable text extracted
+    with BeautifulSoup (see _extract_page_text for why), without needing
+    per-site tag configuration.
     """
     all_documents = []
 
@@ -90,15 +116,9 @@ def process_all_urls(urls):
             if downloaded is None:
                 raise ValueError("failed to download page")
 
-            # Heuristic main-content extraction; drops nav/footer/boilerplate.
-            text = trafilatura.extract(
-                downloaded,
-                include_comments=False,
-                include_tables=True,
-                favor_precision=True,
-            )
+            text = _extract_page_text(downloaded)
             if not text:
-                raise ValueError("no main content extracted")
+                raise ValueError("no content extracted")
 
             doc = Document(
                 page_content=text,

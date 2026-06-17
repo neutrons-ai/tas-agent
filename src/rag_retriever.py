@@ -10,19 +10,29 @@ class RAGRetriever:
         self.vector_store = vector_store
         self.embedding_manager = embedding_manager
     
-    def retrieve(self, query: str, top_k: int = 5, score_threshold: float = 0.0) -> list[Dict[str, Any]]:
-        """Retrieve relevant documents for a query."""
+    def retrieve(self, query: str, top_k: int = 5, score_threshold: float = 0.0,
+                 where: Dict[str, Any] = None) -> list[Dict[str, Any]]:
+        """Retrieve relevant documents for a query.
+
+        ``where``: optional Chroma metadata filter (e.g.
+        {"source_file": "https://.../publications"}) to scope retrieval to a
+        single page. Useful for enumeration queries ("list all X") where the
+        answer is spread across many chunks of one source.
+        """
         print(f"Retrieving documents for query: '{query}'")
-        print(f"Top K: {top_k}, score threshold: {score_threshold}")
+        print(f"Top K: {top_k}, score threshold: {score_threshold}, where: {where}")
 
         # Generate query embedding
         query_embedding = self.embedding_manager.generate_embeddings([query])[0]
-        
+
         try:
-            results = self.vector_store.collection.query(
-                query_embeddings=[query_embedding.tolist()],
-                n_results=top_k
-            )
+            query_kwargs = {
+                "query_embeddings": [query_embedding.tolist()],
+                "n_results": top_k,
+            }
+            if where:
+                query_kwargs["where"] = where
+            results = self.vector_store.collection.query(**query_kwargs)
             retrieved_docs = []
             if results['documents'] and results['documents'][0]:
                 documents = results['documents'][0]

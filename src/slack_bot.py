@@ -1,5 +1,13 @@
 ### Slack bot wrapper around the RAG pipeline (Socket Mode — no public URL needed)
 import os
+import sys
+from pathlib import Path
+
+# Make the repo root importable so `data.url.url_list` resolves regardless of
+# the working directory the bot is launched from.
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
@@ -9,21 +17,31 @@ load_dotenv()
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from data_loader import process_all_txts, process_all_pdfs
+from data_loader import process_all_txts, process_all_pdfs, process_all_urls
 from chunking import split_documents
 from embedding import EmbeddingManager
 from vector_store import VectorStore
 from rag_retriever import RAGRetriever
 from assistant import invoke
+from data.url.url_list import url_list
 
 
-def build_retriever(data_dir="../data"):
+def build_retriever(data_dir=None):
     """Load docs, embed them, and return a ready-to-query retriever. Runs ONCE at startup."""
-    documents = process_all_pdfs(data_dir) + process_all_txts(data_dir)
+    # Default to <repo>/data so the path is correct from any launch directory.
+    if data_dir is None:
+        data_dir = str(REPO_ROOT / "data")
+    documents = (
+        process_all_pdfs(data_dir)
+        + process_all_txts(data_dir)
+        + process_all_urls(url_list)
+    )
     chunks = split_documents(documents)
 
     embedding_manager = EmbeddingManager()
-    vector_store = VectorStore()
+    vector_store = VectorStore(
+        persistent_directory=str(REPO_ROOT / "data" / "vector_store")
+    )
 
     texts = [doc.page_content for doc in chunks]
     embeddings = embedding_manager.generate_embeddings(texts)
@@ -43,7 +61,7 @@ app = App(token=os.environ["SLACK_BOT_TOKEN"])
 
 def answer(text, mode):
     """Run the request through the RAG pipeline in the given mode."""
-    return invoke(request=text.strip(), retriever=retriever, llm=llm, top_k=3, mode=mode)
+    return invoke(request=text.strip(), retriever=retriever, llm=llm, top_k=5, mode=mode)
 
 
 def run_command(command, ack, respond, mode):

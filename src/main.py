@@ -40,47 +40,44 @@ rag_retriever = RAGRetriever(vector_store=vector_store, embedding_manager= embed
 
 llm = ChatOllama(model="gemma4:latest", temperature=0.1, max_completion_tokens=1024)
 
-print(rag_retriever.retrieve("What is VERITAS?"))
-# print(chat("what is VERITAS?", rag_retriever, llm,top_k=3))
-
-# def select_mode():
-#     """Ask the user which mode to run until they pick a valid one."""
-#     while True:
-#         choice = input("\nMode — [c]hat or [a]ssistant (scan commands)? ").strip().lower()
-#         if choice in ("c", "chat"):
-#             return "chat"
-#         if choice in ("a", "assistant"):
-#             return "assistant"
-#         if choice in ("q", "quit", "exit"):
-#             return None
-#         print("  Please enter 'c', 'a', or 'q' to quit.")
+def select_mode():
+    """Ask the user which mode to run until they pick a valid one."""
+    while True:
+        choice = input("\nMode — [c]hat or [a]ssistant (scan commands)? ").strip().lower()
+        if choice in ("c", "chat"):
+            return "chat"
+        if choice in ("a", "assistant"):
+            return "assistant"
+        if choice in ("q", "quit", "exit"):
+            return None
+        print("  Please enter 'c', 'a', or 'q' to quit.")
 
 
-# def main():
-#     print("Neutron RAG assistant. Type 'q' at any prompt to quit.")
-#     while True:
-#         mode = select_mode()
-#         if mode is None:
-#             break
+def main():
+    print("Neutron RAG assistant. Type 'q' at any prompt to quit.")
+    while True:
+        mode = select_mode()
+        if mode is None:
+            break
 
-#         request = input(f"[{mode}] Enter your request: ").strip()
-#         if request.lower() in ("q", "quit", "exit"):
-#             break
-#         if not request:
-#             print("  Empty request, try again.")
-#             continue
+        request = input(f"[{mode}] Enter your request: ").strip()
+        if request.lower() in ("q", "quit", "exit"):
+            break
+        if not request:
+            print("  Empty request, try again.")
+            continue
 
-#         answer = invoke(
-#             request=request,
-#             retriever=rag_retriever,
-#             llm=llm,
-#             top_k=3,
-#             mode=mode,
-#         )
-#         print(f"\n{answer}")
+        answer = invoke(
+            request=request,
+            retriever=rag_retriever,
+            llm=llm,
+            top_k=3,
+            mode=mode,
+        )
+        print(f"\n{answer}")
 
-#     print("\nGoodbye.")
+    print("\nGoodbye.")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
